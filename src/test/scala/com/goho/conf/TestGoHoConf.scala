@@ -5,5 +5,7 @@ package com.goho.conf
  */
 trait TestGoHoConf extends GoHoConf {
 
-  override val refreshRate = 60
+  override val refreshRate = 5
+  override val enableRate = 10
+
 }

@@ -22,6 +22,8 @@ class RateLimiter(refreshInterval: Int = 10, enableInterval: Long = 300) {
   // Maintain Current Limit
   val arr = new Array[Int](rateMap.size)
   val enableArray = new Array[Boolean](arr.size)
+  // Lock object
+  val lock = new Object()
   // Initialize the arrays
   init()
 
@@ -47,7 +49,7 @@ class RateLimiter(refreshInterval: Int = 10, enableInterval: Long = 300) {
       while (doRefresh) {
         Thread.sleep(refreshSleepTime)
         // Update the rates!
-        this.synchronized {
+        lock.synchronized {
           var i = 0
           while (i < arr.size) {
             // Refreshes only the enabled keys
@@ -66,7 +68,7 @@ class RateLimiter(refreshInterval: Int = 10, enableInterval: Long = 300) {
       while(doEnable) {
         Thread.sleep(enableSleepTime)
         // Enable the disabled apis
-        this.synchronized {
+        lock.synchronized {
           var i = 0
           while (i < enableArray.size) {
             if (!enableArray(i)) {
@@ -89,7 +91,7 @@ class RateLimiter(refreshInterval: Int = 10, enableInterval: Long = 300) {
   def accept(key: String): Boolean = {
     val id = keyMap(key)
     if (enableArray(id)) {
-      this.synchronized {
+      lock.synchronized {
         if (enableArray(id)) {
           if (arr(id) == rateMap.get(id)) {
             // This User has reached limit
