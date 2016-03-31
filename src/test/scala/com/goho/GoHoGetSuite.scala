@@ -17,7 +17,8 @@ import scalaz.concurrent.Task
 class GoHoGetSuite extends GoHoFunSuite
     with LazyLogging  {
 
-  var server: HServer = new HServer(GoHoService.gohoService)
+  val service = new GoHoService
+  var server: HServer = new HServer(service.gohoService)
 
   val client = PooledHttp1Client()
   val expectedRecords: ArrayBuffer[HotelRecord] = new ArrayBuffer()

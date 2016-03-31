@@ -6,22 +6,23 @@ import com.goho.service.db.HotelDataBase
 import org.http4s.headers.{Authorization, `WWW-Authenticate`}
 import org.http4s.util.CaseInsensitiveString
 
-import org.http4s.{Challenge, AttributeKey, HttpService}
 import org.http4s._
-import org.http4s.server._
 import org.http4s.dsl._
-import org.http4s.server.middleware.authentication.DigestAuthentication
-import org.http4s.server.middleware.authentication._
 
 import scala.concurrent.ExecutionContext
 import scalaz.concurrent.Task
 /**
  * Created by yash.datta on 30/03/16.
  */
-object GoHoService extends AuthorizeKey
+/**
+ * Main service class
+ */
+class GoHoService extends AuthorizeKey
     with GoHoConf {
 
-  HotelDataBase.init()
+  val dbService = new HotelDataBase
+  // Initialize database service
+  dbService.init
 
   val authHeader = CaseInsensitiveString("Authorization")
   val rateLimiter = new RateLimiter(refreshRate, enableRate)
@@ -38,7 +39,7 @@ object GoHoService extends AuthorizeKey
             // apply rate limit
             if (rateLimiter.accept(key)) {
               try {
-                val records = TaskFactory.getTask(HotelDataBase.getRecords(city)).run
+                val records = TaskFactory.getTask(dbService.getRecords(city)).run
                 val output = records.mkString("\n")
                 Ok(s"${output}")
               } catch {

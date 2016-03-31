@@ -10,7 +10,8 @@ object TestMain {
 
   def main(args: Array[String]): Unit = {
 
-    val server = new HServer(GoHoService.gohoService)
+    val service = new GoHoService
+    val server = new HServer(service.gohoService)
     // Start serving
     server.start
     // Wait

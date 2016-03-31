@@ -1,7 +1,12 @@
 package com.goho
 
-import com.goho.service.{TaskFactory, RateLimiter}
+import com.goho.service.{TestGoHoService, TaskFactory, RateLimiter}
 import com.typesafe.scalalogging.slf4j.LazyLogging
+import org.http4s.headers.Authorization
+import org.http4s.{OAuth2BearerToken, Headers, Request}
+import org.http4s.client.blaze.PooledHttp1Client
+import org.http4s.dsl._
+import org.scalatest.Inspectors.forAll
 
 import scalaz.concurrent.Task
 
@@ -12,13 +17,19 @@ class RateLimiterSuite extends GoHoFunSuite
     with LazyLogging  {
 
   val validKey = "db78d85b7b27862779404c38abddd520"
+  val validKeyList = List("db78d85b7b27862779404c38abddd520", "3c1dd592ad4a4958c9efc7eb98274f0d")
+
+  val service = new TestGoHoService
+  val server = new HServer(service.gohoService)
+  val client = PooledHttp1Client()
 
   override def beforeAll(): Unit = {
-    RateLimiter
+    server.start
   }
 
   override def afterAll(): Unit = {
-
+    client.shutdownNow
+    server.stop
   }
 
   test("Key should not get disabled on requests = ") {
@@ -90,6 +101,21 @@ class RateLimiterSuite extends GoHoFunSuite
 
   }
 
-  // test("Queries get Too many requests error in case ")
+  test("Queries within rate limit return ok") {
+
+    val target = uri("http://localhost:8080/getHotelsByCity") / "Bangkok"
+    val keyList = Array(List.fill(5)(validKeyList(0)), List.fill(5)(validKeyList(1))).flatMap(x=>x)
+    val reqs = keyList.map(x => Request(uri = target, headers = Headers(Authorization(OAuth2BearerToken(x)))))
+
+    val tasks = reqs.map(x => TaskFactory.getTask({
+      val resp = client.toHttpService(x).run
+      resp.status
+    }))
+
+    val statuses = Task.gatherUnordered(tasks).run
+    forAll (statuses) { x =>
+      x should equal (Ok)
+    }
+  }
 
 }
