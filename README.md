@@ -9,10 +9,9 @@ again.
 
 mvn clean package
 
-- running the server (runs on localhost:8080 for now):
+- running the server (runs on localhost:8080 by default if no arguments are provided):
 
-java -cp /path/to/goho-1.0-SNAPSHOT-jar-with-dependencies.jar com.goho.TestMain
-
+java -cp /path/to/goho-1.0-SNAPSHOT-jar-with-dependencies.jar com.goho.TestMain (host) (port)
 
 - Valid Request Example:
 
