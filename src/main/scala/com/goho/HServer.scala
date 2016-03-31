@@ -22,4 +22,10 @@ class HServer(service: HttpService) {
       server = None
     }
   }
+
+  def awaitShutdown(): Unit = {
+    if (server != None) {
+      server.get.awaitShutdown()
+    }
+  }
 }

@@ -3,7 +3,8 @@ package com.goho
 import com.goho.service.GoHoService
 import com.goho.service.db.{RoomType, HotelRecord}
 import com.typesafe.scalalogging.slf4j.LazyLogging
-import org.http4s.HttpService
+import org.http4s.headers.Authorization
+import org.http4s.{OAuth2BearerToken, Headers, Request, HttpService}
 import org.http4s.client.blaze.PooledHttp1Client
 import org.http4s.dsl._
 
@@ -21,6 +22,8 @@ class GoHoGetSuite extends GoHoFunSuite
   val client = PooledHttp1Client()
   val expectedRecords: ArrayBuffer[HotelRecord] = new ArrayBuffer()
   val cities = Vector("Bangkok", "Ashburn")
+  val validKey = "db78d85b7b27862779404c38abddd520"
+  val invalidKey = "SomeRandomKey"
 
   override def beforeAll(): Unit = {
     val in = this.getClass.getResourceAsStream("/hoteldb.csv")
@@ -44,13 +47,43 @@ class GoHoGetSuite extends GoHoFunSuite
     server.stop
   }
 
+  test("Single Valid Request for GOHO Service") {
+
+    val target = uri("http://localhost:8080/getHotelsByCity") / "Bangkok"
+    val req = Request(uri = target, headers = Headers(Authorization(OAuth2BearerToken(validKey))))
+    val resp = client.toHttpService(req).run
+
+    resp.status should equal (Ok)
+  }
+
+  test("Single Invalid Request for GOHO Service") {
+
+    val target = uri("http://localhost:8080/getHotelsByCity") / "Bangkok"
+    // Invalid key in the header
+    val req = Request(uri = target, headers = Headers(Authorization(OAuth2BearerToken(invalidKey))))
+    val resp = client.toHttpService(req).run
+
+    resp.status should equal (Unauthorized)
+  }
+
+  test("Single Invalid Request with no Key for GOHO Service") {
+
+    val target = uri("http://localhost:8080/getHotelsByCity") / "Bangkok"
+    // No key in the header
+    val req = Request(uri = target)
+    val resp = client.toHttpService(req).run
+
+    resp.status should equal (Forbidden)
+  }
+
   test("Simple Get for GOHO Service") {
 
     def getRecords(city: String): Task[String] = {
-      val target = uri("http://localhost:8080/getHotelsByCity/") / city / "RandomKey"
-      client.getAs[String](target)
+      val target = uri("http://localhost:8080/getHotelsByCity") / city
+      val req = Request(uri = target, headers = Headers(Authorization(OAuth2BearerToken("db78d85b7b27862779404c38abddd520"))))
+      client.fetchAs[String](req)
     }
-    
+
     val recordsList = Task.gatherUnordered(cities.map(getRecords))
 
     val output = recordsList.run
@@ -63,7 +96,8 @@ class GoHoGetSuite extends GoHoFunSuite
 
     processedOuput should contain theSameElementsAs (expOutput)
 
-
   }
+
+
 
 }
