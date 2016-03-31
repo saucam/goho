@@ -31,9 +31,14 @@ object GoHoService extends AuthorizeKey {
         case p @ Some(AuthScheme.Bearer) =>
           val key = req.headers.get(authHeader).get.value.split(" ").last
           if (accept(key)) {
-            val records = TaskFactory.getTask(HotelDataBase.getOrderedRecords(city)).run
-            val output = records.mkString("\n")
-            Ok(s"${output}")
+            try {
+              val records = TaskFactory.getTask(HotelDataBase.getRecords(city)).run
+              val output = records.mkString("\n")
+              Ok(s"${output}")
+            } catch {
+              case e: Exception =>
+                BadRequest(s"Exception Occurred: ${e.toString}")
+            }
           } else {
             Task.now(Response(Status.Unauthorized).putHeaders(Authorization(OAuth2BearerToken(key))))
           }

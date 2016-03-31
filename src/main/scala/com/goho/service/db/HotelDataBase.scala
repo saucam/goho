@@ -17,6 +17,7 @@ import java.util.HashMap
 
 import RoomType._
 import HotelDataBase._
+import com.goho.service.GoHoException
 
 import scala.collection.mutable.ArrayBuffer
 
@@ -56,7 +57,21 @@ object HotelDataBase extends DBService {
   }
 
   override def getRecords(city: String): List[HotelRecord] = {
-    getOrderedRecords(city)
+    var ordering = 0
+    var cityName = city
+    if (city.contains("=")) {
+      cityName = city.split("=").head
+      // Only 2 valid values
+      city.split("=").last match {
+        case "sa" =>
+          ordering = SORT_ASC
+        case "sd" =>
+          ordering = SORT_DESC
+        case _ =>
+          throw new DataBaseException("Illegal ordering request!")
+      }
+    }
+    getOrderedRecords(cityName, ordering)
   }
 
   override def getOrderedRecords(city: String, ordering: Int = 0): List[HotelRecord] = {

@@ -44,6 +44,7 @@ class GoHoGetSuite extends GoHoFunSuite
   }
 
   override def afterAll(): Unit = {
+    client.shutdownNow
     server.stop
   }
 
@@ -80,7 +81,7 @@ class GoHoGetSuite extends GoHoFunSuite
 
     def getRecords(city: String): Task[String] = {
       val target = uri("http://localhost:8080/getHotelsByCity") / city
-      val req = Request(uri = target, headers = Headers(Authorization(OAuth2BearerToken("db78d85b7b27862779404c38abddd520"))))
+      val req = Request(uri = target, headers = Headers(Authorization(OAuth2BearerToken(validKey))))
       client.fetchAs[String](req)
     }
 
@@ -90,14 +91,18 @@ class GoHoGetSuite extends GoHoFunSuite
     val processedOuput = output.map(x => x.split("\n")).flatMap(x => x)
     logger.info(output.mkString("\n\n"))
 
-    client.shutdownNow
-
     val expOutput = expectedRecords.map(x => x.toString).toList
 
     processedOuput should contain theSameElementsAs (expOutput)
-
   }
 
+  test("Illegal Ordering request throws Bad Request") {
+    val target = uri("http://localhost:8080/getHotelsByCity") / "Bangkok=se"
+    // Invalid key in the header
+    val req = Request(uri = target, headers = Headers(Authorization(OAuth2BearerToken(validKey))))
+    val resp = client.toHttpService(req).run
 
+    resp.status should equal (BadRequest)
+  }
 
 }
