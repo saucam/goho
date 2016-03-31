@@ -7,6 +7,13 @@ import com.google.common.util.concurrent.ThreadFactoryBuilder
 /**
  * Created by yash.datta on 30/03/16.
  */
+
+trait GoHoConf {
+  // Specify overridable properties here
+  val refreshRate = 10
+  val enableRate = 300
+}
+
 object GoHoConf {
 
   // Initialize thread pool for parallel query execution

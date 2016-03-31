@@ -4,6 +4,7 @@ package com.goho.service
  * Created by yash.datta on 31/03/16.
  */
 import AuthorizedKeys._
+import scala.collection.immutable.HashMap
 
 trait AuthorizeKey extends AuthService {
 
@@ -46,8 +47,7 @@ object AuthorizedKeys {
     "bbf05abee48455d7864c4d233bca1d52"
   )
 
-  val keyMap: Map[String, Int] =
-    keys.zipWithIndex.map{case(k: String,i: Int) => k -> (i + 1) }.toMap
+  val keyMap = new HashMap[String, Int]() ++ keys.zipWithIndex.map{case(k: String,i: Int) => (k -> i)}.toList
 
 
 }
