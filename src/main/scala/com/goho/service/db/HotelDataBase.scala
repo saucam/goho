@@ -16,7 +16,6 @@ import java.io.InputStreamReader
 import java.util.HashMap
 
 import RoomType._
-import HotelDataBase._
 import com.goho.service.GoHoException
 
 import scala.collection.mutable.ArrayBuffer
@@ -26,7 +25,7 @@ case class HotelRecord(hotelId: Int, room: RoomType, price: Int)
 /**
  * This object mocks a real database service for this POC
  */
-object HotelDataBase extends DBService {
+class HotelDataBase extends DBService {
 
   val SORT_ASC = 1
   val SORT_DESC = 2

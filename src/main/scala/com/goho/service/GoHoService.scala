@@ -20,7 +20,9 @@ import scalaz.concurrent.Task
 class GoHoService extends AuthorizeKey
     with GoHoConf {
 
-  HotelDataBase.init()
+  val dbService = new HotelDataBase
+  // Initialize database service
+  dbService.init
 
   val authHeader = CaseInsensitiveString("Authorization")
   val rateLimiter = new RateLimiter(refreshRate, enableRate)
@@ -37,7 +39,7 @@ class GoHoService extends AuthorizeKey
             // apply rate limit
             if (rateLimiter.accept(key)) {
               try {
-                val records = TaskFactory.getTask(HotelDataBase.getRecords(city)).run
+                val records = TaskFactory.getTask(dbService.getRecords(city)).run
                 val output = records.mkString("\n")
                 Ok(s"${output}")
               } catch {
