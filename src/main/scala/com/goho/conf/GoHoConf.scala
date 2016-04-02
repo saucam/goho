@@ -1,6 +1,8 @@
 package com.goho.conf
 
 import java.util.concurrent.{Executors, ExecutorService, ThreadFactory}
+import com.google.gson.GsonBuilder
+
 import scala.concurrent.{ExecutionContext}
 import com.google.common.util.concurrent.ThreadFactoryBuilder
 
@@ -27,5 +29,8 @@ object GoHoConf {
   }
 
   val gohoExecutorService = ExecutionContext.fromExecutorService(javaExecutorService)
+
+  // json converter
+  val json = new GsonBuilder().setPrettyPrinting().serializeNulls().create
 
 }

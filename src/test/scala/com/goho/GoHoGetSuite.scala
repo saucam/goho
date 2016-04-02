@@ -1,7 +1,8 @@
 package com.goho
 
-import com.goho.service.GoHoService
-import com.goho.service.db.{RoomType, HotelRecord}
+import com.goho.service.{RateLimiter, TestGoHoService, GoHoService}
+import com.goho.service.db.{CitySearchResponse, HotelRecord}
+import com.goho.conf.GoHoConf._
 import com.typesafe.scalalogging.slf4j.LazyLogging
 import org.http4s.headers.Authorization
 import org.http4s.{OAuth2BearerToken, Headers, Request, HttpService}
@@ -9,6 +10,8 @@ import org.http4s.client.blaze.PooledHttp1Client
 import org.http4s.dsl._
 
 import scala.collection.mutable.ArrayBuffer
+import scala.collection.mutable.HashMap
+import scalaz.Nondeterminism
 import scalaz.concurrent.Task
 
 /**
@@ -17,14 +20,21 @@ import scalaz.concurrent.Task
 class GoHoGetSuite extends GoHoFunSuite
     with LazyLogging  {
 
-  val service = new GoHoService
+  val service = new TestGoHoService
+  val validKey = "db78d85b7b27862779404c38abddd520"
+  val invalidKey = "SomeRandomKey"
+
+  // Increasing rate limit for a valid key for testing
+  import com.goho.service.AuthorizedKeys._
+  RateLimiter.rateMap.put(keyMap(validKey), 10)
   var server: HServer = new HServer(service.gohoService)
 
   val client = PooledHttp1Client()
-  val expectedRecords: ArrayBuffer[HotelRecord] = new ArrayBuffer()
+
   val cities = Vector("Bangkok", "Ashburn")
-  val validKey = "db78d85b7b27862779404c38abddd520"
-  val invalidKey = "SomeRandomKey"
+  val expectedRecords = new HashMap[String, ArrayBuffer[HotelRecord]]
+  cities.foreach(x => (expectedRecords.put(x, new ArrayBuffer())))
+
 
   override def beforeAll(): Unit = {
     val in = this.getClass.getResourceAsStream("/hoteldb.csv")
@@ -32,12 +42,13 @@ class GoHoGetSuite extends GoHoFunSuite
 
     // Skipping the first line
     lines.next
+
     for (line <- lines) {
       val cols = line.split(",").map(_.trim)
       val city = cols(0)
-      val record = HotelRecord(cols(1).toInt, RoomType.withName(cols(2)), cols(3).toInt)
+      val record = HotelRecord(cols(1).toInt, cols(2), cols(3).toInt)
       if(cities.contains(city)) {
-        expectedRecords.append(record)
+        expectedRecords(city).append(record)
       }
     }
 
@@ -86,15 +97,70 @@ class GoHoGetSuite extends GoHoFunSuite
       client.fetchAs[String](req)
     }
 
-    val recordsList = Task.gatherUnordered(cities.map(getRecords))
+    val tasks = cities.map(getRecords)
+    val recordsList: Task[List[String]] =
+      Nondeterminism[Task].nmap2(tasks(0), tasks(1))((resp1: String, resp2: String) => {
+      List(resp1, resp2)
+    })
 
     val output = recordsList.run
-    val processedOuput = output.map(x => x.split("\n")).flatMap(x => x)
-    logger.info(output.mkString("\n\n"))
 
-    val expOutput = expectedRecords.map(x => x.toString).toList
+    // Log the results for info
+    logger.info(output.mkString("\n"))
 
-    processedOuput should contain theSameElementsAs (expOutput)
+    val expOutput = cities.map(x => json.toJson(CitySearchResponse(expectedRecords(x).toArray)))
+
+    output should contain theSameElementsAs(expOutput)
+  }
+
+  test("Get sa in cityname returns records sorted on room price in GOHO Service") {
+
+    def getRecords(city: String): Task[String] = {
+      val target = uri("http://localhost:8080/getHotelsByCity") / s"${city}=sa"
+      val req = Request(uri = target, headers = Headers(Authorization(OAuth2BearerToken(validKey))))
+      client.fetchAs[String](req)
+    }
+
+    val tasks = cities.map(getRecords)
+    val recordsList: Task[List[String]] =
+      Nondeterminism[Task].nmap2(tasks(0), tasks(1))((resp1: String, resp2: String) => {
+      List(resp1, resp2)
+    })
+
+    val output = recordsList.run
+
+    // Log the results for info
+    logger.info(output.mkString("\n"))
+
+    val expOutput = cities.map(x =>
+      json.toJson(CitySearchResponse(expectedRecords(x).sortBy(p => p.price).toArray)))
+
+    output should contain theSameElementsAs(expOutput)
+  }
+
+  test("Get sd in cityname returns records sorted on room price in descending order in GOHO Service") {
+
+    def getRecords(city: String): Task[String] = {
+      val target = uri("http://localhost:8080/getHotelsByCity") / s"${city}=sd"
+      val req = Request(uri = target, headers = Headers(Authorization(OAuth2BearerToken(validKey))))
+      client.fetchAs[String](req)
+    }
+
+    val tasks = cities.map(getRecords)
+    val recordsList: Task[List[String]] =
+      Nondeterminism[Task].nmap2(tasks(0), tasks(1))((resp1: String, resp2: String) => {
+      List(resp1, resp2)
+    })
+
+    val output = recordsList.run
+
+    // Log the results for info
+    logger.info(output.mkString("\n"))
+
+    val expOutput = cities.map(x =>
+      json.toJson(CitySearchResponse(expectedRecords(x).sortBy(p => p.price)(Ordering[Int].reverse).toArray)))
+
+    output should contain theSameElementsAs(expOutput)
   }
 
   test("Illegal Ordering request throws Bad Request") {

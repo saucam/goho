@@ -32,7 +32,7 @@ class RateLimiterSuite extends GoHoFunSuite
     server.stop
   }
 
-  test("Key should not get disabled on requests = ") {
+  test("Key should not get disabled on requests = configured limit") {
 
     val rateLimiter = new RateLimiter(10)
 

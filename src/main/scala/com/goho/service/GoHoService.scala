@@ -2,7 +2,7 @@ package com.goho.service
 
 import com.goho.conf.GoHoConf
 import com.goho.conf.GoHoConf._
-import com.goho.service.db.HotelDataBase
+import com.goho.service.db.{CitySearchResponse, HotelDataBase}
 import org.http4s.headers.{Authorization, `WWW-Authenticate`}
 import org.http4s.util.CaseInsensitiveString
 
@@ -39,8 +39,8 @@ class GoHoService extends AuthorizeKey
             // apply rate limit
             if (rateLimiter.accept(key)) {
               try {
-                val records = TaskFactory.getTask(dbService.getRecords(city)).run
-                val output = records.mkString("\n")
+                val response = TaskFactory.getTask(dbService.getRecords(city)).run
+                val output = GoHoConf.json.toJson(response)
                 Ok(s"${output}")
               } catch {
                 case e: Exception =>

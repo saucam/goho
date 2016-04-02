@@ -5,7 +5,7 @@ package com.goho.service.db
  */
 trait DBService {
 
-  def getRecords(key: String): List[_]
-  def getOrderedRecords(key: String, ordering: Int): List[_]
+  def getRecords(key: String): Response[_]
+  def getOrderedRecords(key: String, ordering: Int): Response[_]
 
 }
